@@ -16,7 +16,6 @@ interface Display {
 
 interface MultiTableRef {
 	getTableFormValue: () => Display[];
-	setTableFormValue: () => void;
 }
 
 export default function App() {
@@ -25,24 +24,20 @@ export default function App() {
 	const methods = useForm();
 
 	// 테이블 추가
-	const addTable = () => {
-		const newId = Math.max(...tableIds) + 1;
+	const addNewTable = () => {
+		// 빈 배열일 경우 Math.max가 -Infinity 반환
+		const newId = tableIds.length > 0 ? Math.max(...tableIds) + 1 : 0;
 		setTableIds([...tableIds, newId]);
 	};
 
 	// 특정 테이블을 한 칸 위로 이동시키는 함수
 	const moveTableUp = (tableId: number) => {
 		setTableIds(prevList => {
-			// 해당 테이블의 인덱스 찾기
-			const index = prevList.indexOf(tableId);
+			const tableIdx = prevList.indexOf(tableId);
+			if (tableIdx <= 0 || tableIdx === -1) return prevList;
 
-			// 이미 맨 위에 있거나 존재하지 않는 경우 이동할 수 없음
-			if (index <= 0) return prevList;
-
-			// 새 배열을 만들어 요소 위치 변경
 			const newList = [...prevList];
-			// 현재 테이블과 바로 위 테이블의 위치 교환
-			[newList[index], newList[index - 1]] = [newList[index - 1], newList[index]];
+			[newList[tableIdx], newList[tableIdx - 1]] = [newList[tableIdx - 1], newList[tableIdx]];
 
 			return newList;
 		});
@@ -51,29 +46,27 @@ export default function App() {
 	// 특정 테이블을 한 칸 아래로 이동시키는 함수
 	const moveTableDown = (tableId: number) => {
 		setTableIds(prevList => {
-			// 해당 테이블의 인덱스 찾기
-			const index = prevList.indexOf(tableId);
+			const tableIdx = prevList.indexOf(tableId);
+			if (tableIdx === -1 || tableIdx >= prevList.length - 1) return prevList;
 
-			// 이미 맨 아래에 있거나 존재하지 않는 경우 이동할 수 없음
-			if (index === -1 || index >= prevList.length - 1) return prevList;
-
-			// 새 배열을 만들어 요소 위치 변경
 			const newList = [...prevList];
-			// 현재 테이블과 바로 아래 테이블의 위치 교환
-			[newList[index], newList[index + 1]] = [newList[index + 1], newList[index]];
+			[newList[tableIdx], newList[tableIdx + 1]] = [newList[tableIdx + 1], newList[tableIdx]];
 
 			return newList;
 		});
 	};
 
+	// 테이블삭제 (TODO)
+	const removeTable = (tableId: number) => {
+		setTableIds(prevList => prevList.filter(id => id !== tableId));
+		// tablesRef에서도 해당 참조 제거
+		delete tablesRef.current[tableId];
+	};
+
 	// 모든 테이블 값 폼에 저장하기
 	const setAllTableValues = () => {
-		const tableDataArray = tableIds.map(id => {
-			if (tablesRef.current[id]) {
-				return tablesRef.current[id]?.getTableFormValue?.();
-			}
-			return;
-		});
+		const tableDataArray = tableIds.map(id => tablesRef.current[id]?.getTableFormValue()).filter(data => data !== undefined);
+
 		methods.setValue("tableDataArray", tableDataArray);
 		console.log(methods.getValues());
 		console.log("모든 테이블이 폼에 저장됨");
@@ -82,7 +75,7 @@ export default function App() {
 	return (
 		<div>
 			<Button onClick={setAllTableValues}>테이블데이터폼 세팅하기</Button>
-			<Button onClick={addTable}>테이블추가</Button>
+			<Button onClick={addNewTable}>테이블추가</Button>
 
 			<FormProvider {...methods}>
 				{tableIds.map(tableId => (
